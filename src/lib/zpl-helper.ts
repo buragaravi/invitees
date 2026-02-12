@@ -4,6 +4,7 @@
  */
 
 export const generateZPL = (guest: { name: string; uniqueId: string }) => {
+    // Custom template provided by the user for precise printer calibration
     const zpl = `
 ^XA
 ^LH0,0

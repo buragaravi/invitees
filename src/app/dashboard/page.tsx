@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Upload, Search, QrCode, UserCheck, Users, Download,
     ShieldCheck, Trash2, AlertTriangle, Sun, Moon, Edit3, X, Save,
-    Printer, UserPlus, Loader2
+    Printer, UserPlus, Loader2, Zap
 } from 'lucide-react';
 import IDCard from '@/components/IDCard';
 import Barcode from '@/components/Barcode';
@@ -22,8 +22,34 @@ interface DashboardGuest {
     remarks?: string;
     attendanceStatus: 'ATTENDED' | 'NOT ATTENDED';
     invitedStatus: 'INVITED' | 'NOT INVITED';
-    checkInTime?: any;
+    checkInTime?: string | Date;
     uniqueId: string;
+}
+
+// Local WebUSB type definitions for build compatibility
+interface USBEndpoint {
+    endpointNumber: number;
+    direction: 'in' | 'out';
+    type: 'bulk' | 'interrupt' | 'isochronous';
+}
+
+interface USBInterface {
+    alternate: {
+        endpoints: USBEndpoint[];
+    };
+}
+
+interface USBConfiguration {
+    interfaces: USBInterface[];
+}
+
+interface USBDevice {
+    open(): Promise<void>;
+    selectConfiguration(configValue: number): Promise<void>;
+    claimInterface(interfaceNumber: number): Promise<void>;
+    transferOut(endpointNumber: number, data: BufferSource): Promise<any>;
+    close(): Promise<void>;
+    configuration?: USBConfiguration;
 }
 
 export default function Dashboard() {
@@ -300,6 +326,48 @@ export default function Dashboard() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isHardwareScannerDetected]);
 
+
+    const printZPLDirect = async () => {
+        if (!previewingLabel) return;
+
+        try {
+            const zpl = generateZPL({ name: previewingLabel.name, uniqueId: previewingLabel.uniqueId });
+
+            // Request USB device access
+            // Zebra Vendor ID is usually 0x0a5f
+            const device = await (navigator as any).usb.requestDevice({
+                filters: [{ vendorId: 0x0a5f }]
+            }) as USBDevice;
+
+            await device.open();
+            await device.selectConfiguration(1);
+            await device.claimInterface(0);
+
+            const encoder = new TextEncoder();
+            const data = encoder.encode(zpl);
+
+            // Find the bulk output endpoint
+            const endpoint = device.configuration?.interfaces[0].alternate.endpoints.find(
+                (e: USBEndpoint) => e.direction === 'out' && e.type === 'bulk'
+            );
+
+            if (!endpoint) {
+                throw new Error("Could not find printer output endpoint");
+            }
+
+            await device.transferOut(endpoint.endpointNumber, data);
+            await device.close();
+
+            showToast('Success', 'Label sent to thermal printer directly.', 'success');
+        } catch (err: any) {
+            console.error("Direct ZPL printing failed", err);
+            if (err.name === 'NotFoundError') {
+                showToast('Action Cancelled', 'No printer was selected.', 'info');
+            } else {
+                showToast('Print Error', `Direct thermal print failed: ${err.message}`, 'error');
+            }
+        }
+    };
 
     const printLabel = () => {
         if (!previewingLabel) return;
@@ -885,11 +953,18 @@ export default function Dashboard() {
                                     Close
                                 </button>
                                 <button
+                                    onClick={printZPLDirect}
+                                    className="px-4 py-4 bg-orange-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-orange-600/20 flex flex-col items-center justify-center gap-1"
+                                >
+                                    <Zap className="w-4 h-4" />
+                                    Direct Thermal (USB)
+                                </button>
+                                <button
                                     onClick={printLabel}
-                                    className="px-4 py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-2"
+                                    className="px-4 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 flex flex-col items-center justify-center gap-1"
                                 >
                                     <Printer className="w-4 h-4" />
-                                    Direct Print
+                                    Standard Print (HTML)
                                 </button>
                                 <button
                                     onClick={() => {
