@@ -342,6 +342,7 @@ export default function Dashboard() {
                         }
                         .barcode-container {
                             width: 100%;
+                            padding-left: 1.5mm;
                             display: flex;
                             align-items: flex-start;
                             justify-content: flex-start;

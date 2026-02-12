@@ -13,7 +13,7 @@ export const generateZPL = (guest: { name: string; uniqueId: string }) => {
 ^LH0,0
 
 ^BY2,2,80
-^FO0,40
+^FO12,40
 ^BCN,80,Y,N,N
 ^FD${guest.uniqueId}^FS
 
