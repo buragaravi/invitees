@@ -898,7 +898,7 @@ export default function Dashboard() {
                                 </button>
                                 <button
                                     onClick={() => {
-                                        const zpl = generateZPL({ name: previewingLabel.name, uniqueId: previewingLabel.uniqueId, area: previewingLabel.area });
+                                        const zpl = generateZPL({ name: previewingLabel.name, uniqueId: previewingLabel.uniqueId });
                                         downloadZPLFile(previewingLabel.name, zpl);
                                     }}
                                     className="col-span-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700"
