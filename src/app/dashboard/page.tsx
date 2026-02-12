@@ -342,14 +342,13 @@ export default function Dashboard() {
                         }
                         .barcode-container {
                             width: 100%;
-                            padding-left: 2mm; /* Small safety margin on the left */
                             display: flex;
                             align-items: flex-start;
                             justify-content: flex-start;
                             box-sizing: border-box;
                         }
                         .barcode-img { 
-                            max-width: 95%; 
+                            max-width: 100%; 
                             height: auto; 
                             display: block;
                         }
