@@ -325,31 +325,28 @@ export default function Dashboard() {
                     <title>2-Up Label - ${previewingLabel.name}</title>
                     <style>
                         @page { 
-                            size: 45mm 45mm; /* Width of row (20+5+20) x Length (45) */
+                            size: 45mm 20mm; 
                             margin: 0; 
                         }
                         body { 
                             width: 45mm; 
-                            height: 44.5mm; /* Safe length to prevent 2nd row feed */
+                            height: 19.5mm; /* Buffer to prevent vertical spillover */
                             margin: 0; 
                             padding: 0; 
                             display: flex; 
-                            flex-direction: row; 
-                            align-items: center; 
-                            justify-content: flex-start;
+                            flex-direction: column; 
+                            align-items: flex-start; /* Left align */
+                            justify-content: center;
                             background: white;
                             overflow: hidden;
                         }
-                        .label-unit {
-                            width: 20mm;
-                            height: 100%;
+                        .barcode-container {
+                            width: 100%;
+                            padding-left: 2mm; /* Small safety margin on the left */
                             display: flex;
-                            align-items: center;
-                            justify-content: center;
+                            align-items: flex-start;
+                            justify-content: flex-start;
                             box-sizing: border-box;
-                        }
-                        .gap {
-                            width: 5mm;
                         }
                         .barcode-img { 
                             max-width: 95%; 
@@ -359,11 +356,7 @@ export default function Dashboard() {
                     </style>
                 </head>
                 <body>
-                    <div class="label-unit">
-                        <img src="${barcodeDataUrl}" class="barcode-img" />
-                    </div>
-                    <div class="gap"></div>
-                    <div class="label-unit">
+                    <div class="barcode-container">
                         <img src="${barcodeDataUrl}" class="barcode-img" />
                     </div>
                     <script>
