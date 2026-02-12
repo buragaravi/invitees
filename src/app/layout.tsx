@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -17,8 +17,14 @@ export const metadata: Metadata = {
   title: "InviteQR - Secure Party Management",
   description: "Hand-crafted premium guest management and check-in system.",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
   themeColor: "#4f46e5",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

@@ -22,7 +22,7 @@ interface DashboardGuest {
     remarks?: string;
     attendanceStatus: 'ATTENDED' | 'NOT ATTENDED';
     invitedStatus: 'INVITED' | 'NOT INVITED';
-    checkInTime?: string | Date;
+    checkInTime?: any;
     uniqueId: string;
 }
 
@@ -731,7 +731,7 @@ export default function Dashboard() {
 
             <div className="fixed top-0 -left-[5000px] pointer-events-none opacity-0">
                 {filteredGuests.map((guest) => (
-                    <IDCard key={guest._id} guest={guest} id={`card-${guest._id}`} />
+                    <IDCard key={guest._id} guest={guest as any} id={`card-${guest._id}`} />
                 ))}
             </div>
             {/* Label Preview Modal */}
@@ -896,8 +896,8 @@ export default function Dashboard() {
             {scanToast.show && (
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom-5 duration-300">
                     <div className={`px-6 py-4 rounded-[2rem] shadow-2xl border flex items-center gap-4 backdrop-blur-md ${scanToast.type === 'success'
-                            ? 'bg-emerald-500/90 border-emerald-400 text-white'
-                            : 'bg-red-500/90 border-red-400 text-white'
+                        ? 'bg-emerald-500/90 border-emerald-400 text-white'
+                        : 'bg-red-500/90 border-red-400 text-white'
                         }`}>
                         <div className="bg-white/20 p-2 rounded-full">
                             {scanToast.type === 'success' ? <UserCheck className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
