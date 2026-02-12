@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Upload, Search, QrCode, UserCheck, Users, Download,
     ShieldCheck, Trash2, AlertTriangle, Sun, Moon, Edit3, X, Save,
-    Printer, UserPlus
+    Printer, UserPlus, Loader2
 } from 'lucide-react';
 import IDCard from '@/components/IDCard';
 import Barcode from '@/components/Barcode';
@@ -30,7 +30,7 @@ export default function Dashboard() {
     const { theme, toggleTheme } = useTheme();
     const [file, setFile] = useState<File | null>(null);
     const [guests, setGuests] = useState<DashboardGuest[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [stats, setStats] = useState({ total: 0, attended: 0, invited: 0 });
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -60,12 +60,17 @@ export default function Dashboard() {
 
     // Scanner Feedback State
     const [isHardwareScannerDetected, setIsHardwareScannerDetected] = useState(false);
-    const [scanToast, setScanToast] = useState<{ show: boolean, name: string, message: string, type: 'success' | 'error' }>({
+    const [toast, setToast] = useState<{ show: boolean, name: string, message: string, type: 'success' | 'error' }>({
         show: false,
         name: '',
         message: '',
         type: 'success'
     });
+
+    const showToast = (name: string, message: string, type: 'success' | 'error') => {
+        setToast({ show: true, name, message, type });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
+    };
 
     const fetchGuests = async () => {
         try {
@@ -85,26 +90,40 @@ export default function Dashboard() {
     const deleteGuest = async (id: string, name: string) => {
         if (!confirm(`Are you sure you want to delete ${name}?`)) return;
 
+        setIsSubmitting(true);
         try {
             const res = await fetch(`/api/guests?id=${id}`, { method: 'DELETE' });
             if (res.ok) {
+                showToast(name, 'Guest deleted successfully', 'success');
                 fetchGuests();
+            } else {
+                showToast('Error', 'Failed to delete guest', 'error');
             }
         } catch (err) {
             console.error('Delete failed', err);
+            showToast('System Error', 'Delete operation failed', 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const deleteAllGuests = async () => {
         if (!confirm('CRITICAL: Are you sure you want to delete ALL guests? This cannot be undone.')) return;
 
+        setIsSubmitting(true);
         try {
             const res = await fetch('/api/guests', { method: 'DELETE' });
             if (res.ok) {
+                showToast('Bulk Delete', 'All guest records removed', 'success');
                 fetchGuests();
+            } else {
+                showToast('Error', 'Failed to delete all guests', 'error');
             }
         } catch (err) {
             console.error('Bulk delete failed', err);
+            showToast('System Error', 'Bulk delete failed', 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -112,7 +131,7 @@ export default function Dashboard() {
         e.preventDefault();
         if (!file) return;
 
-        setLoading(true);
+        setIsSubmitting(true);
         const formData = new FormData();
         formData.append('file', file);
 
@@ -123,17 +142,17 @@ export default function Dashboard() {
             });
             const data = await res.json();
             if (data.success) {
-                alert(data.message);
+                showToast('Import Success', data.message, 'success');
                 fetchGuests();
+                setFile(null);
             } else {
-                alert(data.error);
+                showToast('Import Failed', data.error, 'error');
             }
         } catch (err) {
             console.error('Upload failed', err);
-            alert('Upload failed');
+            showToast('System Error', 'Upload failed', 'error');
         } finally {
-            setLoading(false);
-            setFile(null);
+            setIsSubmitting(false);
         }
     };
 
@@ -181,13 +200,9 @@ export default function Dashboard() {
             lastKeyTime = currentTime;
         };
 
-        const showToast = (name: string, message: string, type: 'success' | 'error') => {
-            setScanToast({ show: true, name, message, type });
-            setTimeout(() => setScanToast(prev => ({ ...prev, show: false })), 4000);
-        };
 
         const handleScannerCheckIn = async (uniqueId: string) => {
-            setLoading(true);
+            setIsSubmitting(true);
             try {
                 const res = await fetch('/api/check-in', {
                     method: 'POST',
@@ -208,13 +223,14 @@ export default function Dashboard() {
                 console.error("Scanner check-in failed", err);
                 showToast('Scanner Error', 'Connection failed', 'error');
             } finally {
-                setLoading(false);
+                setIsSubmitting(false);
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isHardwareScannerDetected]);
+
 
     const printLabel = () => {
         if (!previewingLabel) return;
@@ -278,6 +294,7 @@ export default function Dashboard() {
 
     const handleAddGuest = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         try {
             const res = await fetch('/api/guests', {
                 method: 'POST',
@@ -285,6 +302,7 @@ export default function Dashboard() {
                 body: JSON.stringify(addForm)
             });
             if (res.ok) {
+                showToast(addForm.name, 'Guest added successfully', 'success');
                 setIsAddModalOpen(false);
                 setAddForm({
                     name: '',
@@ -296,11 +314,13 @@ export default function Dashboard() {
                 fetchGuests();
             } else {
                 const data = await res.json();
-                alert(data.details || 'Failed to add guest');
+                showToast('Creation Failed', data.details || 'Check details and try again', 'error');
             }
         } catch (err) {
             console.error('Creation failed', err);
-            alert('Creation failed');
+            showToast('System Error', 'Could not save guest', 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -308,6 +328,7 @@ export default function Dashboard() {
         e.preventDefault();
         if (!editingGuest) return;
 
+        setIsSubmitting(true);
         try {
             const res = await fetch(`/api/guests?id=${editingGuest._id}`, {
                 method: 'PATCH',
@@ -315,12 +336,17 @@ export default function Dashboard() {
                 body: JSON.stringify(editForm)
             });
             if (res.ok) {
+                showToast(editForm.name, 'Changes saved successfully', 'success');
                 setIsEditModalOpen(false);
                 fetchGuests();
+            } else {
+                showToast('Update Failed', 'Could not save changes', 'error');
             }
         } catch (err) {
             console.error('Update failed', err);
-            alert('Update failed');
+            showToast('System Error', 'Update operation failed', 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -391,9 +417,10 @@ export default function Dashboard() {
                         </button>
                         <button
                             onClick={deleteAllGuests}
-                            className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl border border-red-500/20 transition-all flex items-center gap-2 text-[10px] md:text-xs font-bold uppercase tracking-widest"
+                            disabled={isSubmitting}
+                            className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl border border-red-500/20 transition-all flex items-center gap-2 text-[10px] md:text-xs font-bold uppercase tracking-widest disabled:opacity-50"
                         >
-                            <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            {isSubmitting ? <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4" />}
                             Delete All
                         </button>
 
@@ -406,10 +433,10 @@ export default function Dashboard() {
                             />
                             <button
                                 type="submit"
-                                disabled={!file || loading}
+                                disabled={!file || isSubmitting}
                                 className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white p-1.5 md:p-2 rounded-lg md:rounded-xl transition-all shadow-lg"
                             >
-                                <Upload className="w-4 h-4 md:w-5 md:h-5" />
+                                {isSubmitting ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <Upload className="w-4 h-4 md:w-5 md:h-5" />}
                             </button>
                         </form>
                     </div>
@@ -539,10 +566,11 @@ export default function Dashboard() {
                                                 </button>
                                                 <button
                                                     onClick={() => deleteGuest(guest._id, guest.name)}
-                                                    className="p-3 bg-red-600/10 text-red-600 dark:text-red-500 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm"
+                                                    disabled={isSubmitting}
+                                                    className="p-3 bg-red-600/10 text-red-600 dark:text-red-500 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm disabled:opacity-50"
                                                     title="Delete Guest"
                                                 >
-                                                    <Trash2 className="w-5 h-5" />
+                                                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
                                                 </button>
                                             </div>
                                         </td>
@@ -718,9 +746,10 @@ export default function Dashboard() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-[2] px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-2"
+                                    disabled={isSubmitting}
+                                    className="flex-[2] px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
                                 >
-                                    <Save className="w-4 h-4" />
+                                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                     Save Changes
                                 </button>
                             </div>
@@ -881,9 +910,10 @@ export default function Dashboard() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all"
+                                    disabled={isSubmitting}
+                                    className="flex-1 px-4 py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all disabled:opacity-50"
                                 >
-                                    <Save className="w-4 h-4" />
+                                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                     Add Guest
                                 </button>
                             </div>
@@ -892,22 +922,22 @@ export default function Dashboard() {
                 </div>
             )}
 
-            {/* Hardware Scanner Notification Toast */}
-            {scanToast.show && (
+            {/* Notification Toast */}
+            {toast.show && (
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom-5 duration-300">
-                    <div className={`px-6 py-4 rounded-[2rem] shadow-2xl border flex items-center gap-4 backdrop-blur-md ${scanToast.type === 'success'
+                    <div className={`px-6 py-4 rounded-[2rem] shadow-2xl border flex items-center gap-4 backdrop-blur-md ${toast.type === 'success'
                         ? 'bg-emerald-500/90 border-emerald-400 text-white'
                         : 'bg-red-500/90 border-red-400 text-white'
                         }`}>
                         <div className="bg-white/20 p-2 rounded-full">
-                            {scanToast.type === 'success' ? <UserCheck className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                            {toast.type === 'success' ? <UserCheck className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                         </div>
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest opacity-80">{scanToast.message}</p>
-                            <p className="text-sm font-black uppercase tracking-tight">{scanToast.name}</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-80">{toast.message}</p>
+                            <p className="text-sm font-black uppercase tracking-tight">{toast.name}</p>
                         </div>
                         <button
-                            onClick={() => setScanToast(prev => ({ ...prev, show: false }))}
+                            onClick={() => setToast(prev => ({ ...prev, show: false }))}
                             className="ml-2 p-1 hover:bg-white/10 rounded-full transition-colors"
                         >
                             <X className="w-4 h-4" />
