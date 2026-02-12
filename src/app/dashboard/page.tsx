@@ -310,7 +310,7 @@ export default function Dashboard() {
             JsBarcode(canvas, previewingLabel.uniqueId, {
                 format: "CODE128",
                 width: 1.5,
-                height: 50, // Reduced further to fit 2cm (20mm) height
+                height: 50,
                 displayValue: true,
                 fontSize: 16
             });
@@ -322,31 +322,34 @@ export default function Dashboard() {
             const labelHtml = `
             <html>
                 <head>
-                    <title>Print Label - ${previewingLabel.name}</title>
+                    <title>2-Up Label - ${previewingLabel.name}</title>
                     <style>
                         @page { 
-                            size: 45mm 20mm; 
+                            size: 45mm 45mm; /* Width of row (20+5+20) x Length (45) */
                             margin: 0; 
                         }
                         body { 
                             width: 45mm; 
-                            height: 19.5mm; /* Buffer to prevent vertical spillover */
+                            height: 44.5mm; /* Safe length to prevent 2nd row feed */
                             margin: 0; 
                             padding: 0; 
                             display: flex; 
-                            flex-direction: column; 
-                            align-items: flex-start; /* Left align */
-                            justify-content: center;
+                            flex-direction: row; 
+                            align-items: center; 
+                            justify-content: flex-start;
                             background: white;
                             overflow: hidden;
                         }
-                        .barcode-container {
-                            width: 100%;
-                            padding-left: 2mm; /* Small safety margin on the left */
+                        .label-unit {
+                            width: 20mm;
+                            height: 100%;
                             display: flex;
-                            align-items: flex-start;
-                            justify-content: flex-start;
+                            align-items: center;
+                            justify-content: center;
                             box-sizing: border-box;
+                        }
+                        .gap {
+                            width: 5mm;
                         }
                         .barcode-img { 
                             max-width: 95%; 
@@ -356,7 +359,11 @@ export default function Dashboard() {
                     </style>
                 </head>
                 <body>
-                    <div class="barcode-container">
+                    <div class="label-unit">
+                        <img src="${barcodeDataUrl}" class="barcode-img" />
+                    </div>
+                    <div class="gap"></div>
+                    <div class="label-unit">
                         <img src="${barcodeDataUrl}" class="barcode-img" />
                     </div>
                     <script>
