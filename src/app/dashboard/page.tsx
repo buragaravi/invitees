@@ -58,13 +58,28 @@ export default function Dashboard() {
         invitedStatus: 'NOT INVITED' as 'INVITED' | 'NOT INVITED'
     });
 
-    // Scanner Feedback State
+    // Generic Feedback State
     const [isHardwareScannerDetected, setIsHardwareScannerDetected] = useState(false);
     const [toast, setToast] = useState<{ show: boolean, name: string, message: string, type: 'success' | 'error' }>({
         show: false,
         name: '',
         message: '',
         type: 'success'
+    });
+
+    // Confirm Dialog State
+    const [confirmDialog, setConfirmDialog] = useState<{
+        show: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        type: 'danger' | 'warning';
+    }>({
+        show: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        type: 'danger'
     });
 
     const showToast = (name: string, message: string, type: 'success' | 'error') => {
@@ -87,44 +102,58 @@ export default function Dashboard() {
         fetchGuests();
     }, []);
 
-    const deleteGuest = async (id: string, name: string) => {
-        if (!confirm(`Are you sure you want to delete ${name}?`)) return;
-
-        setIsSubmitting(true);
-        try {
-            const res = await fetch(`/api/guests?id=${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                showToast(name, 'Guest deleted successfully', 'success');
-                fetchGuests();
-            } else {
-                showToast('Error', 'Failed to delete guest', 'error');
+    const deleteGuest = (id: string, name: string) => {
+        setConfirmDialog({
+            show: true,
+            title: 'Delete Guest',
+            message: `Are you sure you want to delete ${name}? This will permanently remove their record and check-in history.`,
+            type: 'danger',
+            onConfirm: async () => {
+                setIsSubmitting(true);
+                try {
+                    const res = await fetch(`/api/guests?id=${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        showToast(name, 'Guest deleted successfully', 'success');
+                        fetchGuests();
+                    } else {
+                        showToast('Error', 'Failed to delete guest', 'error');
+                    }
+                } catch (err) {
+                    console.error('Delete failed', err);
+                    showToast('System Error', 'Delete operation failed', 'error');
+                } finally {
+                    setIsSubmitting(false);
+                    setConfirmDialog(prev => ({ ...prev, show: false }));
+                }
             }
-        } catch (err) {
-            console.error('Delete failed', err);
-            showToast('System Error', 'Delete operation failed', 'error');
-        } finally {
-            setIsSubmitting(false);
-        }
+        });
     };
 
-    const deleteAllGuests = async () => {
-        if (!confirm('CRITICAL: Are you sure you want to delete ALL guests? This cannot be undone.')) return;
-
-        setIsSubmitting(true);
-        try {
-            const res = await fetch('/api/guests', { method: 'DELETE' });
-            if (res.ok) {
-                showToast('Bulk Delete', 'All guest records removed', 'success');
-                fetchGuests();
-            } else {
-                showToast('Error', 'Failed to delete all guests', 'error');
+    const deleteAllGuests = () => {
+        setConfirmDialog({
+            show: true,
+            title: 'CRITICAL: Delete All Guests',
+            message: 'This will permanently remove EVERY guest record. This action is extremely dangerous and cannot be undone.',
+            type: 'danger',
+            onConfirm: async () => {
+                setIsSubmitting(true);
+                try {
+                    const res = await fetch('/api/guests', { method: 'DELETE' });
+                    if (res.ok) {
+                        showToast('Bulk Delete', 'All guest records removed', 'success');
+                        fetchGuests();
+                    } else {
+                        showToast('Error', 'Failed to delete all guests', 'error');
+                    }
+                } catch (err) {
+                    console.error('Bulk delete failed', err);
+                    showToast('System Error', 'Bulk delete failed', 'error');
+                } finally {
+                    setIsSubmitting(false);
+                    setConfirmDialog(prev => ({ ...prev, show: false }));
+                }
             }
-        } catch (err) {
-            console.error('Bulk delete failed', err);
-            showToast('System Error', 'Bulk delete failed', 'error');
-        } finally {
-            setIsSubmitting(false);
-        }
+        });
     };
 
     const handleUpload = async (e: React.FormEvent) => {
@@ -288,7 +317,7 @@ export default function Dashboard() {
             printWindow.document.close();
         } catch (err) {
             console.error("Barcode generation for print failed", err);
-            alert("Could not generate barcode. Please try again.");
+            showToast('Print Error', 'Could not generate barcode. Please try again.', 'error');
         }
     };
 
@@ -942,6 +971,45 @@ export default function Dashboard() {
                         >
                             <X className="w-4 h-4" />
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Confirmation Modal */}
+            {confirmDialog.show && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform animate-in zoom-in duration-300">
+                        <div className="p-8 text-center space-y-6">
+                            <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center ${confirmDialog.type === 'danger' ? 'bg-red-50 dark:bg-red-500/10 text-red-600' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-600'}`}>
+                                <AlertTriangle className="w-10 h-10" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                    {confirmDialog.title}
+                                </h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                                    {confirmDialog.message}
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 pt-4">
+                                <button
+                                    onClick={() => setConfirmDialog(prev => ({ ...prev, show: false }))}
+                                    className="px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-200 transition-all border border-slate-200 dark:border-slate-700"
+                                >
+                                    No, Keep it
+                                </button>
+                                <button
+                                    onClick={confirmDialog.onConfirm}
+                                    disabled={isSubmitting}
+                                    className="px-6 py-4 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-600/20 flex items-center justify-center gap-2 hover:bg-red-700 transition-all disabled:opacity-50"
+                                >
+                                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    Yes, Delete
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
