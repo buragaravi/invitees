@@ -310,9 +310,9 @@ export default function Dashboard() {
             JsBarcode(canvas, previewingLabel.uniqueId, {
                 format: "CODE128",
                 width: 1.5,
-                height: 65, // Reduced from 70 to prevent vertical crowding
+                height: 50, // Reduced further to fit 2cm (20mm) height
                 displayValue: true,
-                fontSize: 20
+                fontSize: 16
             });
             const barcodeDataUrl = canvas.toDataURL("image/png");
 
@@ -325,30 +325,31 @@ export default function Dashboard() {
                     <title>Print Label - ${previewingLabel.name}</title>
                     <style>
                         @page { 
-                            size: 50mm 25mm; 
+                            size: 45mm 20mm; 
                             margin: 0; 
                         }
                         body { 
-                            width: 50mm; 
-                            height: 24.5mm; /* Reduced by 0.5mm to prevent vertical spillover */
+                            width: 45mm; 
+                            height: 19.5mm; /* Buffer to prevent vertical spillover */
                             margin: 0; 
                             padding: 0; 
                             display: flex; 
                             flex-direction: column; 
-                            align-items: center; 
+                            align-items: flex-start; /* Left align */
                             justify-content: center;
                             background: white;
                             overflow: hidden;
                         }
                         .barcode-container {
                             width: 100%;
+                            padding-left: 2mm; /* Small safety margin on the left */
                             display: flex;
-                            align-items: center;
-                            justify-content: center;
+                            align-items: flex-start;
+                            justify-content: flex-start;
                             box-sizing: border-box;
                         }
                         .barcode-img { 
-                            width: 98%; /* Small buffer to prevent side-clipping */
+                            max-width: 95%; 
                             height: auto; 
                             display: block;
                         }
