@@ -269,7 +269,7 @@ export default function Dashboard() {
         try {
             JsBarcode(canvas, previewingLabel.uniqueId, {
                 format: "CODE128",
-                width: 2,
+                width: 1.5, // Reduced from 2 to ensure fit
                 height: 100,
                 displayValue: true,
                 fontSize: 20
@@ -280,38 +280,54 @@ export default function Dashboard() {
             if (!printWindow) return;
 
             const labelHtml = `
-                <html>
-                    <head>
-                        <title>Print Label - ${previewingLabel.name}</title>
-                        <style>
-                            @page { size: 2in 1in; margin: 0; }
-                            body { 
-                                width: 2in; height: 1in; 
-                                margin: 0; padding: 2px; 
-                                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                                display: flex; flex-direction: column; 
-                                items-center; justify-content: center;
-                                text-align: center;
-                                background: white;
-                            }
-                            .name { font-weight: 900; font-size: 16px; margin-bottom: 1px; color: black; }
-                            .area { font-size: 10px; font-weight: bold; color: #333; margin-bottom: 4px; border-bottom: 1px solid #000; width: 80%; margin-left: 10%; padding-bottom: 2px; }
-                            .barcode-img { width: 90%; height: auto; max-height: 45px; }
-                        </style>
-                    </head>
-                    <body>
+            <html>
+                <head>
+                    <title>Print Label - ${previewingLabel.name}</title>
+                    <style>
+                        @page { 
+                            size: 50mm 25mm; 
+                            margin: 0; 
+                        }
+                        body { 
+                            width: 50mm; 
+                            height: 25mm; 
+                            margin: 0; 
+                            padding: 0; 
+                            display: flex; 
+                            flex-direction: column; 
+                            align-items: center; 
+                            justify-content: center;
+                            background: white;
+                            overflow: hidden;
+                        }
+                        .barcode-container {
+                            width: 100%;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                        }
+                        .barcode-img { 
+                            max-width: 95%; 
+                            height: auto; 
+                            display: block;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="barcode-container">
                         <img src="${barcodeDataUrl}" class="barcode-img" />
-                        <script>
-                            window.onload = () => {
-                                setTimeout(() => {
-                                    window.print();
-                                    window.close();
-                                }, 300);
-                            };
-                        </script>
-                    </body>
-                </html>
-            `;
+                    </div>
+                    <script>
+                        window.onload = () => {
+                            setTimeout(() => {
+                                window.print();
+                                window.close();
+                            }, 500);
+                        };
+                    </script>
+                </body>
+            </html>
+        `;
 
             printWindow.document.write(labelHtml);
             printWindow.document.close();
