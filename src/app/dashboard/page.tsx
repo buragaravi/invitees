@@ -407,17 +407,16 @@ export default function Dashboard() {
                             padding: 0; 
                             display: flex; 
                             flex-direction: column; 
-                            align-items: flex-start; 
+                            align-items: center; 
                             justify-content: center;
                             background: white;
                             overflow: hidden;
                         }
                         .barcode-container {
                             width: 100%;
-                            padding-left: 2mm; /* Safety offset from left edge */
                             display: flex;
-                            align-items: flex-start;
-                            justify-content: flex-start;
+                            align-items: center;
+                            justify-content: center;
                             box-sizing: border-box;
                             image-rendering: pixelated;
                             image-rendering: crisp-edges;
