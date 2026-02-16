@@ -363,6 +363,9 @@ export default function Dashboard() {
             console.error("Direct ZPL printing failed", err);
             if (err.name === 'NotFoundError') {
                 showToast('Action Cancelled', 'No printer was selected.', 'info');
+            } else if (err.message.includes('Access Denied') || err.name === 'SecurityError') {
+                showToast('Driver Error', 'Windows is locking the printer. You must use Zadig to install the WinUSB driver.', 'error');
+                window.open('https://zadig.akeo.ie/', '_blank');
             } else {
                 showToast('Print Error', `Direct thermal print failed: ${err.message}`, 'error');
             }
@@ -377,10 +380,11 @@ export default function Dashboard() {
         try {
             JsBarcode(canvas, previewingLabel.uniqueId, {
                 format: "CODE128",
-                width: 3, // Bolder lines to match BY3
-                height: 100, // Matches BCN,100
+                width: 2, // Reduced from 3 to fit 45mm without bleeding
+                height: 100,
                 displayValue: true,
-                fontSize: 16
+                fontSize: 16,
+                margin: 0
             });
             const barcodeDataUrl = canvas.toDataURL("image/png");
 
@@ -410,6 +414,7 @@ export default function Dashboard() {
                         }
                         .barcode-container {
                             width: 100%;
+                            padding-left: 2mm; /* Safety offset from left edge */
                             display: flex;
                             align-items: flex-start;
                             justify-content: flex-start;
