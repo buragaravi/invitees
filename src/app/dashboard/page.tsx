@@ -12,7 +12,7 @@ import { toPng } from 'html-to-image';
 import { useTheme } from '@/components/ThemeProvider';
 import { generateSmartPDF } from '@/lib/pdf-export';
 import { generateZPL, downloadZPLFile } from '@/lib/zpl-helper';
-import { QRCodeSVG } from 'qrcode.react';
+import JsBarcode from 'jsbarcode';
 
 interface DashboardGuest {
     _id: string;
@@ -372,14 +372,21 @@ export default function Dashboard() {
         }
     };
 
-    const printTemplateRef = useRef<HTMLDivElement>(null);
+    const printLabel = () => {
+        if (!previewingLabel) return;
 
-    const printLabel = async () => {
-        if (!previewingLabel || !printTemplateRef.current) return;
-
+        // Create a temporary canvas to generate the barcode data URL
+        const canvas = document.createElement('canvas');
         try {
-            // Generate image from the hidden React template
-            const dataUrl = await toPng(printTemplateRef.current, { quality: 1.0, pixelRatio: 3 });
+            JsBarcode(canvas, previewingLabel.uniqueId, {
+                format: "CODE128",
+                width: 2, // Reduced from 3 to fit 45mm without bleeding
+                height: 100,
+                displayValue: true,
+                fontSize: 16,
+                margin: 0
+            });
+            const barcodeDataUrl = canvas.toDataURL("image/png");
 
             const printWindow = window.open('', '_blank');
             if (!printWindow) return;
@@ -395,33 +402,39 @@ export default function Dashboard() {
                         }
                         body { 
                             width: 45mm; 
-                            height: 19.5mm; 
+                            height: 20mm; 
                             margin: 0; 
                             padding: 0; 
-                            display: flex; 
-                            align-items: center; 
-                            justify-content: center;
                             background: white;
                             overflow: hidden;
                         }
-                        .print-content {
+                        .barcode-container {
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 45mm;
+                            height: 20mm;
+                            margin: 0;
+                            padding: 0;
+                            display: flex;
+                            align-items: flex-start;
+                            justify-content: flex-start;
+                            box-sizing: border-box;
+                            z-index: 9999;
+                        }
+                        .barcode-img { 
                             width: 100%;
                             height: 100%;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                        }
-                        img {
-                            width: 100%;
-                            height: auto;
+                            object-fit: fill;
                             display: block;
+                            image-rendering: pixelated;
                             -webkit-print-color-adjust: exact;
                         }
                     </style>
                 </head>
                 <body>
-                    <div class="print-content">
-                        <img src="${dataUrl}" />
+                    <div class="barcode-container">
+                        <img src="${barcodeDataUrl}" class="barcode-img" />
                     </div>
                     <script>
                         window.onload = () => {
@@ -438,8 +451,8 @@ export default function Dashboard() {
             printWindow.document.write(labelHtml);
             printWindow.document.close();
         } catch (err) {
-            console.error("Label generation for print failed", err);
-            showToast('Print Error', 'Could not generate label image.', 'error');
+            console.error("Barcode generation for print failed", err);
+            showToast('Print Error', 'Could not generate barcode. Please try again.', 'error');
         }
     };
 
@@ -1142,44 +1155,6 @@ export default function Dashboard() {
                     </div>
                 </div>
             )}
-
-            {/* Hidden Print Template for 2-Up QR Codes */}
-            <div style={{ position: 'absolute', top: -10000, left: -10000, pointerEvents: 'none' }}>
-                {previewingLabel && (
-                    <div
-                        ref={printTemplateRef}
-                        style={{
-                            width: '45mm',
-                            height: '20mm',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between', // Distribute evenly
-                            padding: '0 2mm', // Small safety padding at edges
-                            background: 'white'
-                        }}
-                    >
-                        {/* QR Code 1 (Left Label) */}
-                        <div style={{ width: '19mm', height: '19mm', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <QRCodeSVG
-                                value={previewingLabel.uniqueId}
-                                size={70} // Approx 18-19mm
-                                level="M"
-                                includeMargin={false}
-                            />
-                        </div>
-
-                        {/* QR Code 2 (Right Label) */}
-                        <div style={{ width: '19mm', height: '19mm', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <QRCodeSVG
-                                value={previewingLabel.uniqueId}
-                                size={70} // Approx 18-19mm
-                                level="M"
-                                includeMargin={false}
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
         </div>
     );
 }
