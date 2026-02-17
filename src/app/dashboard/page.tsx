@@ -395,8 +395,8 @@ export default function Dashboard() {
         try {
             JsBarcode(canvas, previewingLabel.uniqueId, {
                 format: "CODE128",
-                width: 3, // Increased from 2 to make bars "brighter"
-                height: 110, // Increased by 10% from 100
+                width: 5, // Increased to 4 for extra "bright" (thick) bars
+                height: 150, // Increased by 20% from base 100
                 displayValue: true,
                 fontSize: 14,
                 margin: 0
@@ -440,8 +440,8 @@ export default function Dashboard() {
                             box-sizing: border-box;
                         }
                         .barcode-img { 
-                            width: 28.875mm;
-                            height: 16.5mm;
+                            width: 38mm;
+                            height: 18mm;
                             margin-top: 2mm;
                             margin-left: 0;
                             object-fit: contain;
