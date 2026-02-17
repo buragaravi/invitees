@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-export const generateSmartPDF = (guests: any[], stats: any) => {
+export const generateSmartPDF = (guests: Record<string, any>[], stats: Record<string, number>) => {
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     const primaryColor: [number, number, number] = [79, 70, 229]; // Indigo-600
 
@@ -27,7 +27,7 @@ export const generateSmartPDF = (guests: any[], stats: any) => {
     doc.text('EVENT ANALYTICS', 15, 55);
 
     // Stats Cards
-    const cardWidth = 55;
+    const cardWidth = 45;
     const cards = [
         {
             label: 'TOTAL GUESTS',
@@ -39,16 +39,23 @@ export const generateSmartPDF = (guests: any[], stats: any) => {
         {
             label: 'ATTENDED',
             value: stats.attended.toString(),
-            x: 15 + cardWidth + 5,
+            x: 15 + cardWidth + 2.5,
             bg: [236, 253, 245] as [number, number, number],
             text: [6, 95, 70] as [number, number, number]
         },
         {
             label: 'UNATTENDED',
             value: (stats.total - stats.attended).toString(),
-            x: 15 + (cardWidth + 5) * 2,
+            x: 15 + (cardWidth + 2.5) * 2,
             bg: [254, 242, 242] as [number, number, number],
             text: [153, 27, 27] as [number, number, number]
+        },
+        {
+            label: 'FOOD TAKEN',
+            value: stats.foodTaken.toString(),
+            x: 15 + (cardWidth + 2.5) * 3,
+            bg: [255, 247, 237] as [number, number, number],
+            text: [154, 52, 18] as [number, number, number]
         }
     ];
 
@@ -72,10 +79,20 @@ export const generateSmartPDF = (guests: any[], stats: any) => {
         doc.text(card.value, card.x + 6, 78);
     });
 
-    // Formatting check-in time
+    // Effectiveness Summary
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    const efficiency = ((stats.foodTaken / (stats.attended || 1)) * 100).toFixed(1);
+    doc.text(`Food Efficiency: ${efficiency}% of attended guests received food.`, 15, 92);
+
+    // Formatting check-in time (Date + Time)
     const formatCheckIn = (time: string | Date | undefined) => {
         if (!time) return '-';
         return new Date(time).toLocaleString('en-IN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
             hour12: true
@@ -86,26 +103,27 @@ export const generateSmartPDF = (guests: any[], stats: any) => {
     const attended = guests.filter(g => g.attendanceStatus === 'ATTENDED');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.setFontSize(12);
-    doc.text(`ATTENDED GUESTS (${attended.length})`, 15, 100);
+    doc.text(`ATTENDED GUESTS (${attended.length})`, 15, 105);
 
     autoTable(doc, {
-        startY: 105,
-        head: [['Name', 'Contact No', 'Area', 'Check-in Time']],
+        startY: 110,
+        head: [['Name', 'Contact No', 'Area', 'Check-in Time', 'Food Status']],
         body: attended.map(g => [
             g.name,
             g.phoneNumber || '-',
             g.area || '-',
-            formatCheckIn(g.checkInTime)
+            formatCheckIn(g.checkInTime),
+            g.foodStatus === 'TAKEN' ? 'TAKEN' : 'NOT TAKEN'
         ]),
         headStyles: { fillColor: primaryColor, textColor: 255 },
         alternateRowStyles: { fillColor: [249, 250, 251] },
-        styles: { fontSize: 8 },
+        styles: { fontSize: 7.5 },
         margin: { left: 15, right: 15 }
     });
 
     // Table 2: Unattended Guests (on new page if needed)
     const unattended = guests.filter(g => g.attendanceStatus !== 'ATTENDED');
-    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    const finalY = ((doc as any).lastAutoTable?.finalY || 110) + 20;
 
     // Check if new page is needed
     let startY = finalY;
@@ -134,7 +152,7 @@ export const generateSmartPDF = (guests: any[], stats: any) => {
     });
 
     // Footer
-    const pageCount = (doc as any).internal.getNumberOfPages();
+    const pageCount = (doc as any).internal.getNumberOfPages() as number;
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);

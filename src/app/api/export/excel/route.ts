@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connect';
 import Guest from '@/lib/db/models/Guest';
 import * as XLSX from 'xlsx';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         await connectDB();
 
@@ -11,15 +11,19 @@ export async function GET(req: NextRequest) {
 
         const attended = guests.filter(g => g.attendanceStatus === 'ATTENDED');
         const unattended = guests.filter(g => g.attendanceStatus !== 'ATTENDED');
+        const foodTaken = guests.filter(g => g.foodStatus === 'TAKEN');
 
         const stats = [
             { Metric: 'Total Guests', Value: guests.length },
             { Metric: 'Attended', Value: attended.length },
             { Metric: 'Unattended', Value: unattended.length },
-            { Metric: 'Attendance Rate', Value: `${((attended.length / (guests.length || 1)) * 100).toFixed(2)}%` }
+            { Metric: 'Food Taken', Value: foodTaken.length },
+            { Metric: 'Attendance Rate', Value: `${((attended.length / (guests.length || 1)) * 100).toFixed(2)}%` },
+            { Metric: 'Food Taken (%) in Total', Value: `${((foodTaken.length / (guests.length || 1)) * 100).toFixed(2)}%` },
+            { Metric: 'Food Taken (%) in Attended', Value: `${((foodTaken.length / (attended.length || 1)) * 100).toFixed(2)}%` }
         ];
 
-        const formatDate = (date?: Date) => {
+        const formatDate = (date?: Date | string) => {
             if (!date) return '-';
             return new Date(date).toLocaleString('en-IN', {
                 day: '2-digit',
@@ -38,6 +42,8 @@ export async function GET(req: NextRequest) {
             'Area': g.area || '-',
             'Remarks': g.remarks || '-',
             'Check-in Time': formatDate(g.checkInTime),
+            'Food Status': g.foodStatus || 'NOT TAKEN',
+            'Food Time': formatDate(g.foodTime),
             'Unique ID': g.uniqueId
         }));
 
@@ -46,6 +52,8 @@ export async function GET(req: NextRequest) {
             'Contact No': g.phoneNumber || '-',
             'Area': g.area || '-',
             'Remarks': g.remarks || '-',
+            'Food Status': g.foodStatus || 'NOT TAKEN',
+            'Food Time': formatDate(g.foodTime),
             'Unique ID': g.uniqueId
         }));
 
@@ -75,8 +83,9 @@ export async function GET(req: NextRequest) {
             },
         });
 
-    } catch (error: any) {
-        console.error('Export Error:', error);
-        return NextResponse.json({ error: 'Export failed', details: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const err = error as Error;
+        console.error('Export Error:', err);
+        return NextResponse.json({ error: 'Export failed', details: err.message }, { status: 500 });
     }
 }

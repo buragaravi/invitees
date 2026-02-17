@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Upload, Search, QrCode as QrIcon, UserCheck, Users, Download,
     ShieldCheck, Trash2, AlertTriangle, Sun, Moon, Edit3, X, Save,
@@ -127,7 +127,7 @@ export default function Dashboard() {
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
     };
 
-    const fetchGuests = async (page: number = 1, search: string = searchTerm, limit: number = pagination.limit) => {
+    const fetchGuests = useCallback(async (page: number = 1, search: string = searchTerm, limit: number = pagination.limit) => {
         setIsLoading(true);
         try {
             const res = await fetch(`/api/guests?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`);
@@ -142,14 +142,14 @@ export default function Dashboard() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [searchTerm, pagination.limit]);
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             fetchGuests(1, searchTerm);
         }, 300); // Debounce search
         return () => clearTimeout(timeoutId);
-    }, [searchTerm]);
+    }, [searchTerm, fetchGuests]);
 
     const deleteGuest = (id: string, name: string) => {
         setConfirmDialog({
@@ -318,7 +318,7 @@ export default function Dashboard() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isHardwareScannerDetected]);
+    }, [isHardwareScannerDetected, fetchGuests]);
 
 
     const printQR = async () => {
@@ -640,8 +640,8 @@ export default function Dashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                     {[
                         { label: 'Total Guests', value: stats.total, icon: Users, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10' },
-                        { label: 'Invited', value: stats.invited, icon: QrIcon, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500/10' },
                         { label: 'Attended', value: stats.attended, icon: UserCheck, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10' },
+                        { label: 'Unattended', value: stats.total - stats.attended, icon: X, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10' },
                         { label: 'Food Taken', value: stats.foodTaken, icon: Sun, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10' },
                     ].map((stat, i) => (
                         <div key={i} className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-between shadow-sm dark:shadow-lg backdrop-blur-sm group">
@@ -661,6 +661,40 @@ export default function Dashboard() {
                                     </div>
                                 </>
                             )}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Additional Metrics Row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mt-3 md:mt-6">
+                    {[
+                        {
+                            label: 'Attendance Rate',
+                            value: `${((stats.attended / (stats.total || 1)) * 100).toFixed(1)}%`,
+                            description: 'Guests present'
+                        },
+                        {
+                            label: 'Food vs Total',
+                            value: `${((stats.foodTaken / (stats.total || 1)) * 100).toFixed(1)}%`,
+                            description: 'Of all guests'
+                        },
+                        {
+                            label: 'Food Efficiency',
+                            value: `${((stats.foodTaken / (stats.attended || 1)) * 100).toFixed(1)}%`,
+                            description: 'Of attended guests'
+                        },
+                        {
+                            label: 'Invited Count',
+                            value: stats.invited,
+                            description: 'QR invitations'
+                        },
+                    ].map((metric, i) => (
+                        <div key={i} className="bg-white/50 dark:bg-slate-900/20 border border-slate-200/60 dark:border-slate-800/60 p-3 md:p-4 rounded-2xl md:rounded-[1.5rem] shadow-sm backdrop-blur-sm">
+                            <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-tighter">{metric.label}</p>
+                            <div className="flex items-baseline gap-2 mt-1">
+                                <p className="text-lg md:text-xl font-black text-slate-700 dark:text-slate-200">{metric.value}</p>
+                                <p className="text-[9px] font-medium text-slate-500">{metric.description}</p>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -991,7 +1025,7 @@ export default function Dashboard() {
 
                     {guests.length === 0 && !isLoading && (
                         <div className="py-20 text-center text-slate-400 dark:text-slate-600">
-                            <p className="text-lg font-medium">No results for "{searchTerm}"</p>
+                            <p className="text-lg font-medium">No results for &quot;{searchTerm}&quot;</p>
                             <p className="text-sm uppercase tracking-widest mt-1">Try a different name or number</p>
                         </div>
                     )}
@@ -1101,7 +1135,7 @@ export default function Dashboard() {
             <div className="fixed top-0 -left-[5000px] pointer-events-none opacity-0">
                 {/* Pre-render cards for download logic if needed, but only for current page to avoid lag */}
                 {guests.map((guest) => (
-                    <IDCard key={guest._id} guest={guest as any} id={`card-${guest._id}`} />
+                    <IDCard key={guest._id} guest={guest as unknown as Record<string, any>} id={`card-${guest._id}`} />
                 ))}
             </div>
             {/* Label Preview Modal */}
