@@ -2,11 +2,32 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/connect';
 import Guest from '@/lib/db/models/Guest';
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
         await connectDB();
+        const { searchParams } = new URL(req.url);
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '50');
+        const search = searchParams.get('search') || '';
 
-        const guests = await Guest.find().sort({ createdAt: -1 }).limit(100);
+        const skip = (page - 1) * limit;
+
+        // Build query
+        const query: any = {};
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            query.$or = [
+                { name: searchRegex },
+                { phoneNumber: searchRegex },
+                { uniqueId: { $regex: search.toUpperCase(), $options: 'i' } }
+            ];
+        }
+
+        const [guests, totalCount] = await Promise.all([
+            Guest.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+            Guest.countDocuments(query)
+        ]);
+
         const stats = {
             total: await Guest.countDocuments(),
             attended: await Guest.countDocuments({ attendanceStatus: 'ATTENDED' }),
@@ -14,9 +35,18 @@ export async function GET() {
             foodTaken: await Guest.countDocuments({ foodStatus: 'TAKEN' }),
         };
 
-        return NextResponse.json({ guests, stats });
+        return NextResponse.json({
+            guests,
+            stats,
+            pagination: {
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+                currentPage: page,
+                limit
+            }
+        });
     } catch (error) {
-        console.error('Check-in error:', error);
+        console.error('Fetch guests error:', error);
         return NextResponse.json({
             error: 'Server error',
             details: (error as any).message

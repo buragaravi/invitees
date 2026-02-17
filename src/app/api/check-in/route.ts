@@ -72,11 +72,11 @@ export async function POST(req: NextRequest) {
             details: 'Guest has already checked in and taken food.',
             guest
         });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Check-in error:', error);
         return NextResponse.json({
             error: 'Server error',
-            details: error.message
+            details: error instanceof Error ? error.message : 'Unknown error'
         }, { status: 500 });
     }
 }

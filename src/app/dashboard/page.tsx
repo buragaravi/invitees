@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Upload, Search, QrCode as QrIcon, UserCheck, Users, Download,
     ShieldCheck, Trash2, AlertTriangle, Sun, Moon, Edit3, X, Save,
-    Printer, UserPlus, Loader2
+    Printer, UserPlus, Loader2, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import IDCard from '@/components/IDCard';
 import Barcode from '@/components/Barcode';
@@ -34,8 +34,15 @@ export default function Dashboard() {
     const [file, setFile] = useState<File | null>(null);
     const [guests, setGuests] = useState<DashboardGuest[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [stats, setStats] = useState({ total: 0, attended: 0, invited: 0, foodTaken: 0 });
     const [searchTerm, setSearchTerm] = useState('');
+    const [pagination, setPagination] = useState({
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+        limit: 50
+    });
 
 
     // Edit Modal State
@@ -120,20 +127,29 @@ export default function Dashboard() {
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
     };
 
-    const fetchGuests = async () => {
+    const fetchGuests = async (page: number = 1, search: string = searchTerm, limit: number = pagination.limit) => {
+        setIsLoading(true);
         try {
-            const res = await fetch('/api/guests');
+            const res = await fetch(`/api/guests?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`);
             const data = await res.json();
             setGuests(data.guests || []);
-            setStats(data.stats || { total: 0, attended: 0, invited: 0 });
+            setStats(data.stats || { total: 0, attended: 0, invited: 0, foodTaken: 0 });
+            if (data.pagination) {
+                setPagination(data.pagination);
+            }
         } catch (err) {
             console.error('Failed to fetch guests', err);
+        } finally {
+            setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchGuests();
-    }, []);
+        const timeoutId = setTimeout(() => {
+            fetchGuests(1, searchTerm);
+        }, 300); // Debounce search
+        return () => clearTimeout(timeoutId);
+    }, [searchTerm]);
 
     const deleteGuest = (id: string, name: string) => {
         setConfirmDialog({
@@ -557,11 +573,6 @@ export default function Dashboard() {
         }
     };
 
-    const filteredGuests = guests.filter(g =>
-        g.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        g.phoneNumber?.includes(searchTerm) ||
-        g.uniqueId.includes(searchTerm.toUpperCase())
-    );
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8 font-sans transition-colors duration-300">
@@ -633,14 +644,23 @@ export default function Dashboard() {
                         { label: 'Attended', value: stats.attended, icon: UserCheck, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10' },
                         { label: 'Food Taken', value: stats.foodTaken, icon: Sun, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10' },
                     ].map((stat, i) => (
-                        <div key={i} className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-between shadow-sm dark:shadow-lg backdrop-blur-sm">
-                            <div>
-                                <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest">{stat.label}</p>
-                                <p className="text-2xl md:text-3xl font-black mt-1">{stat.value.toLocaleString()}</p>
-                            </div>
-                            <div className={`${stat.bg} ${stat.color} p-3 md:p-4 rounded-xl md:rounded-2xl shadow-inner`}>
-                                <stat.icon className="w-5 h-5 md:w-8 md:h-8" />
-                            </div>
+                        <div key={i} className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-between shadow-sm dark:shadow-lg backdrop-blur-sm group">
+                            {isLoading ? (
+                                <div className="w-full space-y-2 animate-pulse">
+                                    <div className="h-3 w-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                                    <div className="h-8 w-16 bg-slate-300 dark:bg-slate-700 rounded"></div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div>
+                                        <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest">{stat.label}</p>
+                                        <p className="text-2xl md:text-3xl font-black mt-1">{stat.value.toLocaleString()}</p>
+                                    </div>
+                                    <div className={`${stat.bg} ${stat.color} p-3 md:p-4 rounded-xl md:rounded-2xl shadow-inner transform group-hover:scale-110 transition-transform`}>
+                                        <stat.icon className="w-5 h-5 md:w-8 md:h-8" />
+                                    </div>
+                                </>
+                            )}
                         </div>
                     ))}
                 </div>
@@ -648,16 +668,33 @@ export default function Dashboard() {
                 {/* Guest List controls */}
                 <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden shadow-xl dark:shadow-2xl backdrop-blur-sm">
                     <div className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
-                        <div className="relative flex-1 w-full md:max-w-md">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4 md:w-5 md:h-5" />
-                            <input
-                                type="text"
-                                placeholder="Search guests..."
-                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl py-2.5 md:py-3 pl-11 md:pl-12 pr-4 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/50 transition-all text-slate-900 dark:text-white"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+                        <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1">
+                            <div className="relative flex-1 w-full md:max-w-md">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4 md:w-5 md:h-5" />
+                                <input
+                                    type="text"
+                                    placeholder="Search guests..."
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl py-2.5 md:py-3 pl-11 md:pl-12 pr-4 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/50 transition-all text-slate-900 dark:text-white"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Entries Selection */}
+                            <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-950 px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Show</span>
+                                <select
+                                    value={pagination.limit}
+                                    onChange={(e) => fetchGuests(1, searchTerm, parseInt(e.target.value))}
+                                    className="bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                                >
+                                    {[10, 20, 50, 100, 200].map(val => (
+                                        <option key={val} value={val} className="bg-white dark:bg-slate-900">{val}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
+
                         <div className="grid grid-cols-2 md:flex gap-2.5 md:gap-4">
                             <button
                                 onClick={handleExportExcel}
@@ -676,6 +713,57 @@ export default function Dashboard() {
                         </div>
                     </div>
 
+                    {/* Pagination Controls (TOP) */}
+                    {!isLoading && guests.length > 0 && (
+                        <div className="px-8 py-3 bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                                showing <span className="text-indigo-600 dark:text-indigo-400">{((pagination.currentPage - 1) * pagination.limit) + 1}-{Math.min(pagination.currentPage * pagination.limit, pagination.totalCount)}</span> of <span className="text-slate-900 dark:text-white">{pagination.totalCount}</span>
+                            </p>
+                            {pagination.totalPages > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => fetchGuests(pagination.currentPage - 1)}
+                                        disabled={pagination.currentPage === 1}
+                                        className="p-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-30 transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    >
+                                        <ChevronLeft className="w-3.5 h-3.5" />
+                                        <span className="sr-only">Prev</span>
+                                    </button>
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                                            let pageNum: number;
+                                            if (pagination.totalPages <= 5) pageNum = i + 1;
+                                            else if (pagination.currentPage <= 3) pageNum = i + 1;
+                                            else if (pagination.currentPage >= pagination.totalPages - 2) pageNum = pagination.totalPages - 4 + i;
+                                            else pageNum = pagination.currentPage - 2 + i;
+
+                                            return (
+                                                <button
+                                                    key={pageNum}
+                                                    onClick={() => fetchGuests(pageNum)}
+                                                    className={`w-7 h-7 rounded-lg text-[10px] font-black transition-all ${pagination.currentPage === pageNum
+                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                                                        : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500'
+                                                        }`}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <button
+                                        onClick={() => fetchGuests(pagination.currentPage + 1)}
+                                        disabled={pagination.currentPage === pagination.totalPages}
+                                        className="p-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-30 transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    >
+                                        <ChevronRight className="w-3.5 h-3.5" />
+                                        <span className="sr-only">Next</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Desktop View: Table */}
                     <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-left">
@@ -689,166 +777,222 @@ export default function Dashboard() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200 dark:divide-slate-800/50">
-                                {filteredGuests.map((guest) => (
-                                    <tr key={guest._id} className="hover:bg-indigo-600/[0.03] dark:hover:bg-indigo-600/5 transition-colors group">
-                                        <td className="px-8 py-5">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-500 dark:text-slate-500 transform group-hover:scale-110 transition-transform">
-                                                    {guest.name.charAt(0)}
+                                {isLoading ? (
+                                    Array.from({ length: 10 }).map((_, i) => (
+                                        <tr key={i} className="animate-pulse">
+                                            <td className="px-8 py-5">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
+                                                    <div className="space-y-2">
+                                                        <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                                                        <div className="h-3 w-20 bg-slate-100 dark:bg-slate-900 rounded"></div>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-bold text-slate-900 dark:text-white text-base">{guest.name}</p>
-                                                    <p className="text-slate-500 text-xs font-medium tracking-wide">{guest.phoneNumber || 'No phone'}</p>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <div className="space-y-2">
+                                                    <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                                                    <div className="h-3 w-40 bg-slate-100 dark:bg-slate-900 rounded"></div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-5">
-                                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{guest.area || '-'}</p>
-                                            <p className="text-xs text-slate-400 dark:text-slate-500 italic max-w-xs truncate">{guest.remarks || '-'}</p>
-                                        </td>
-                                        <td className="px-8 py-5">
-                                            {guest.checkInTime ? (
-                                                <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
-                                                    {new Date(guest.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                                                </p>
-                                            ) : (
-                                                <p className="text-xs text-slate-400 dark:text-slate-700">-</p>
-                                            )}
-                                        </td>
-                                        <td className="px-8 py-5">
-                                            <div className="flex flex-col gap-1.5">
-                                                <span className={`text-[10px] font-black tracking-widest px-2.5 py-1 rounded-lg w-max shadow-sm ${guest.attendanceStatus === 'ATTENDED'
-                                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500'
-                                                    }`}>
-                                                    {guest.attendanceStatus}
-                                                </span>
-                                                {guest.foodStatus === 'TAKEN' && (
-                                                    <span className="text-[10px] font-black tracking-widest px-2.5 py-1 rounded-lg w-max shadow-sm bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                                                        FOOD TAKEN
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-5 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => downloadIDCard(guest._id, guest.name)}
-                                                    className="p-1.5 md:p-2 bg-indigo-500/10 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-                                                    title="Download ID Card"
-                                                >
-                                                    <Download className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => setPreviewingLabel(guest)}
-                                                    className="p-1.5 md:p-2 bg-slate-500/10 text-slate-600 dark:text-slate-400 rounded-lg hover:bg-slate-600 hover:text-white transition-all shadow-sm"
-                                                    title="Print Zebra Label"
-                                                >
-                                                    <Printer className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => openEditModal(guest)}
-                                                    className="p-3 bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-xl transition-all shadow-sm"
-                                                    title="Edit Guest"
-                                                >
-                                                    <Edit3 className="w-5 h-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteGuest(guest._id, guest.name)}
-                                                    disabled={isSubmitting}
-                                                    className="p-3 bg-red-600/10 text-red-600 dark:text-red-500 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm disabled:opacity-50"
-                                                    title="Delete Guest"
-                                                >
-                                                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
-                                                </button>
-                                            </div>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <div className="h-3 w-16 bg-slate-100 dark:bg-slate-900 rounded"></div>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <div className="h-5 w-20 bg-slate-100 dark:bg-slate-900 rounded"></div>
+                                            </td>
+                                            <td className="px-8 py-5"></td>
+                                        </tr>
+                                    ))
+                                ) : guests.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="px-8 py-20 text-center">
+                                            <Users className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                                            <p className="text-slate-500 font-medium">No guests found</p>
                                         </td>
                                     </tr>
-                                ))}
+                                ) : (
+                                    guests.map((guest) => (
+                                        <tr key={guest._id} className="hover:bg-indigo-600/[0.03] dark:hover:bg-indigo-600/5 transition-colors group">
+                                            <td className="px-8 py-5">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-500 dark:text-slate-500 transform group-hover:scale-110 transition-transform">
+                                                        {guest.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-900 dark:text-white text-base">{guest.name}</p>
+                                                        <p className="text-slate-500 text-xs font-medium tracking-wide">{guest.phoneNumber || 'No phone'}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{guest.area || '-'}</p>
+                                                <p className="text-xs text-slate-400 dark:text-slate-500 italic max-w-xs truncate">{guest.remarks || '-'}</p>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                {guest.checkInTime ? (
+                                                    <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                                                        {new Date(guest.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-xs text-slate-400 dark:text-slate-700">-</p>
+                                                )}
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <div className="flex flex-col gap-1.5">
+                                                    <span className={`text-[10px] font-black tracking-widest px-2.5 py-1 rounded-lg w-max shadow-sm ${guest.attendanceStatus === 'ATTENDED'
+                                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500'
+                                                        }`}>
+                                                        {guest.attendanceStatus}
+                                                    </span>
+                                                    {guest.foodStatus === 'TAKEN' && (
+                                                        <span className="text-[10px] font-black tracking-widest px-2.5 py-1 rounded-lg w-max shadow-sm bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                                                            FOOD TAKEN
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        onClick={() => downloadIDCard(guest._id, guest.name)}
+                                                        className="p-1.5 md:p-2 bg-indigo-500/10 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                        title="Download ID Card"
+                                                    >
+                                                        <Download className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setPreviewingLabel(guest)}
+                                                        className="p-1.5 md:p-2 bg-slate-500/10 text-slate-600 dark:text-slate-400 rounded-lg hover:bg-slate-600 hover:text-white transition-all shadow-sm"
+                                                        title="Print Zebra Label"
+                                                    >
+                                                        <Printer className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openEditModal(guest)}
+                                                        className="p-3 bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-xl transition-all shadow-sm"
+                                                        title="Edit Guest"
+                                                    >
+                                                        <Edit3 className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteGuest(guest._id, guest.name)}
+                                                        disabled={isSubmitting}
+                                                        className="p-3 bg-red-600/10 text-red-600 dark:text-red-500 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm disabled:opacity-50"
+                                                        title="Delete Guest"
+                                                    >
+                                                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
 
+
                     {/* Mobile View: Cards */}
                     <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-                        {filteredGuests.map((guest) => (
-                            <div key={guest._id} className="p-4 space-y-4 active:bg-slate-50 dark:active:bg-slate-900 transition-colors">
-                                <div className="flex items-start justify-between">
+                        {isLoading ? (
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <div key={i} className="p-4 space-y-4 animate-pulse">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-500">
-                                            {guest.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-black text-slate-900 dark:text-white text-sm leading-tight">{guest.name}</h3>
-                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{guest.phoneNumber || 'No phone'}</p>
+                                        <div className="w-12 h-12 rounded-2xl bg-slate-200 dark:bg-slate-800"></div>
+                                        <div className="space-y-2">
+                                            <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                                            <div className="h-3 w-20 bg-slate-100 dark:bg-slate-900 rounded"></div>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <span className={`text-[9px] font-black tracking-widest px-2 py-1 rounded-full ${guest.attendanceStatus === 'ATTENDED'
-                                            ? 'bg-emerald-500/10 text-emerald-600'
-                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                                            }`}>
-                                            {guest.attendanceStatus}
-                                        </span>
-                                        {guest.foodStatus === 'TAKEN' && (
-                                            <span className="text-[9px] font-black tracking-widest px-2 py-1 rounded-full bg-orange-500/10 text-orange-600">
-                                                FOOD
-                                            </span>
-                                        )}
-                                    </div>
+                                    <div className="h-10 bg-slate-100 dark:bg-slate-900 rounded-2xl"></div>
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-3 bg-slate-50/50 dark:bg-slate-950/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                    <div>
-                                        <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Area</p>
-                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{guest.area || 'General'}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Check-in</p>
-                                        <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 font-mono">
-                                            {guest.checkInTime ? new Date(guest.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--:--'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between gap-2 pt-1">
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => openEditModal(guest)}
-                                            className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg"
-                                        >
-                                            <Edit3 className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                            onClick={() => deleteGuest(guest._id, guest.name)}
-                                            className="p-2 bg-red-500/10 text-red-500 rounded-lg"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                    <button
-                                        onClick={() => downloadIDCard(guest._id, guest.name)}
-                                        className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20"
-                                    >
-                                        <Download className="w-3.5 h-3.5" />
-                                        Card
-                                    </button>
-                                    <button
-                                        onClick={() => setPreviewingLabel(guest)}
-                                        className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-black uppercase tracking-widest"
-                                    >
-                                        <Printer className="w-3.5 h-3.5" />
-                                        Label
-                                    </button>
-                                </div>
+                            ))
+                        ) : guests.length === 0 ? (
+                            <div className="p-10 text-center">
+                                <p className="text-slate-500 text-sm">No guests found</p>
                             </div>
-                        ))}
+                        ) : (
+                            guests.map((guest) => (
+                                <div key={guest._id} className="p-4 space-y-4 active:bg-slate-50 dark:active:bg-slate-900 transition-colors">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-500">
+                                                {guest.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-black text-slate-900 dark:text-white text-sm leading-tight">{guest.name}</h3>
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{guest.phoneNumber || 'No phone'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span className={`text-[9px] font-black tracking-widest px-2 py-1 rounded-full ${guest.attendanceStatus === 'ATTENDED'
+                                                ? 'bg-emerald-500/10 text-emerald-600'
+                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                                }`}>
+                                                {guest.attendanceStatus}
+                                            </span>
+                                            {guest.foodStatus === 'TAKEN' && (
+                                                <span className="text-[9px] font-black tracking-widest px-2 py-1 rounded-full bg-orange-500/10 text-orange-600">
+                                                    FOOD
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 bg-slate-50/50 dark:bg-slate-950/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <div>
+                                            <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Area</p>
+                                            <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{guest.area || 'General'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Check-in</p>
+                                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                                                {guest.checkInTime ? new Date(guest.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--:--'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between gap-2 pt-1">
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => openEditModal(guest)}
+                                                className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg"
+                                            >
+                                                <Edit3 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                onClick={() => deleteGuest(guest._id, guest.name)}
+                                                className="p-2 bg-red-500/10 text-red-500 rounded-lg"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => downloadIDCard(guest._id, guest.name)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20"
+                                        >
+                                            <Download className="w-3.5 h-3.5" />
+                                            Card
+                                        </button>
+                                        <button
+                                            onClick={() => setPreviewingLabel(guest)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-black uppercase tracking-widest"
+                                        >
+                                            <Printer className="w-3.5 h-3.5" />
+                                            Label
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
 
-                    {filteredGuests.length === 0 && (
+                    {guests.length === 0 && !isLoading && (
                         <div className="py-20 text-center text-slate-400 dark:text-slate-600">
-                            <p className="text-lg font-medium">No guests found</p>
-                            <p className="text-sm uppercase tracking-widest mt-1">Upload a file to get started</p>
+                            <p className="text-lg font-medium">No results for "{searchTerm}"</p>
+                            <p className="text-sm uppercase tracking-widest mt-1">Try a different name or number</p>
                         </div>
                     )}
                 </div>
@@ -955,7 +1099,8 @@ export default function Dashboard() {
             )}
 
             <div className="fixed top-0 -left-[5000px] pointer-events-none opacity-0">
-                {filteredGuests.map((guest) => (
+                {/* Pre-render cards for download logic if needed, but only for current page to avoid lag */}
+                {guests.map((guest) => (
                     <IDCard key={guest._id} guest={guest as any} id={`card-${guest._id}`} />
                 ))}
             </div>
