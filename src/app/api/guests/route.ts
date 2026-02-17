@@ -11,6 +11,7 @@ export async function GET() {
             total: await Guest.countDocuments(),
             attended: await Guest.countDocuments({ attendanceStatus: 'ATTENDED' }),
             invited: await Guest.countDocuments({ invitedStatus: 'INVITED' }),
+            foodTaken: await Guest.countDocuments({ foodStatus: 'TAKEN' }),
         };
 
         return NextResponse.json({ guests, stats });

@@ -22,7 +22,9 @@ interface DashboardGuest {
     remarks?: string;
     attendanceStatus: 'ATTENDED' | 'NOT ATTENDED';
     invitedStatus: 'INVITED' | 'NOT INVITED';
+    foodStatus: 'NOT TAKEN' | 'TAKEN';
     checkInTime?: string | Date;
+    foodTime?: string | Date;
     uniqueId: string;
 }
 
@@ -32,7 +34,7 @@ export default function Dashboard() {
     const [file, setFile] = useState<File | null>(null);
     const [guests, setGuests] = useState<DashboardGuest[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [stats, setStats] = useState({ total: 0, attended: 0, invited: 0 });
+    const [stats, setStats] = useState({ total: 0, attended: 0, invited: 0, foodTaken: 0 });
     const [searchTerm, setSearchTerm] = useState('');
 
 
@@ -272,7 +274,7 @@ export default function Dashboard() {
                 const data = await res.json();
                 if (data.success) {
                     fetchGuests(); // Refresh list
-                    showToast(data.guest.name, 'Check-in Successful', 'success');
+                    showToast(data.guest.name, data.message || 'Operation Successful', 'success');
 
                     // Success Feedback
                     if (successAudio.current) {
@@ -396,7 +398,7 @@ export default function Dashboard() {
             JsBarcode(canvas, previewingLabel.uniqueId, {
                 format: "CODE128",
                 width: 5, // Increased to 4 for extra "bright" (thick) bars
-                height: 150, // Increased by 20% from base 100
+                height: 180, // Increased by 20% from base 100
                 displayValue: true,
                 fontSize: 14,
                 margin: 0
@@ -624,20 +626,20 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                     {[
-                        { label: 'Total Guests', value: stats.total, icon: Users, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10', span: 'col-span-2 md:col-span-1' },
-                        { label: 'Invited', value: stats.invited, icon: QrIcon, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500/10', span: 'col-span-1' },
-                        { label: 'Attended', value: stats.attended, icon: UserCheck, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', span: 'col-span-1' },
+                        { label: 'Total Guests', value: stats.total, icon: Users, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10' },
+                        { label: 'Invited', value: stats.invited, icon: QrIcon, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500/10' },
+                        { label: 'Attended', value: stats.attended, icon: UserCheck, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10' },
+                        { label: 'Food Taken', value: stats.foodTaken, icon: Sun, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10' },
                     ].map((stat, i) => (
-                        <div key={i} className={`${stat.span} bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-between shadow-sm dark:shadow-lg backdrop-blur-sm`}>
+                        <div key={i} className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-between shadow-sm dark:shadow-lg backdrop-blur-sm">
                             <div>
                                 <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest">{stat.label}</p>
                                 <p className="text-2xl md:text-3xl font-black mt-1">{stat.value.toLocaleString()}</p>
                             </div>
                             <div className={`${stat.bg} ${stat.color} p-3 md:p-4 rounded-xl md:rounded-2xl shadow-inner`}>
-                                <stat.icon className="w-6 h-6 md:w-8 md:h-8" />
+                                <stat.icon className="w-5 h-5 md:w-8 md:h-8" />
                             </div>
                         </div>
                     ))}
@@ -721,6 +723,11 @@ export default function Dashboard() {
                                                     }`}>
                                                     {guest.attendanceStatus}
                                                 </span>
+                                                {guest.foodStatus === 'TAKEN' && (
+                                                    <span className="text-[10px] font-black tracking-widest px-2.5 py-1 rounded-lg w-max shadow-sm bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                                                        FOOD TAKEN
+                                                    </span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-8 py-5 text-right">
@@ -776,12 +783,19 @@ export default function Dashboard() {
                                             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{guest.phoneNumber || 'No phone'}</p>
                                         </div>
                                     </div>
-                                    <span className={`text-[9px] font-black tracking-widest px-2 py-1 rounded-full ${guest.attendanceStatus === 'ATTENDED'
-                                        ? 'bg-emerald-500/10 text-emerald-600'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                                        }`}>
-                                        {guest.attendanceStatus}
-                                    </span>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className={`text-[9px] font-black tracking-widest px-2 py-1 rounded-full ${guest.attendanceStatus === 'ATTENDED'
+                                            ? 'bg-emerald-500/10 text-emerald-600'
+                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                            }`}>
+                                            {guest.attendanceStatus}
+                                        </span>
+                                        {guest.foodStatus === 'TAKEN' && (
+                                            <span className="text-[9px] font-black tracking-widest px-2 py-1 rounded-full bg-orange-500/10 text-orange-600">
+                                                FOOD
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3 bg-slate-50/50 dark:bg-slate-950/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">

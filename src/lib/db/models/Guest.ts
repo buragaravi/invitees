@@ -7,7 +7,9 @@ export interface IGuest extends Document {
     area?: string;
     invitedStatus: 'NOT INVITED' | 'INVITED';
     attendanceStatus: 'NOT ATTENDED' | 'ATTENDED';
+    foodStatus: 'NOT TAKEN' | 'TAKEN';
     checkInTime?: Date;
+    foodTime?: Date;
     uniqueId: string;
     createdAt: Date;
     updatedAt: Date;
@@ -29,7 +31,13 @@ const GuestSchema: Schema = new Schema(
             enum: ['NOT ATTENDED', 'ATTENDED'],
             default: 'NOT ATTENDED',
         },
+        foodStatus: {
+            type: String,
+            enum: ['NOT TAKEN', 'TAKEN'],
+            default: 'NOT TAKEN',
+        },
         checkInTime: { type: Date },
+        foodTime: { type: Date },
         uniqueId: { type: String, required: true, unique: true },
     },
     { timestamps: true }
