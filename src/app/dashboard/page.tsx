@@ -349,6 +349,15 @@ export default function Dashboard() {
                             size: 45mm 20mm; 
                             margin: 0 !important; 
                         }
+                        @media print {
+                            body, html {
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                height: 20mm !important;
+                                width: 45mm !important;
+                                overflow: hidden !important;
+                            }
+                        }
                         body { 
                             width: 45mm; 
                             height: 20mm; 
@@ -387,6 +396,7 @@ export default function Dashboard() {
                     </div>
                     <script>
                         window.onload = () => {
+                            document.title = "";
                             setTimeout(() => {
                                 window.print();
                                 window.close();
@@ -434,6 +444,15 @@ export default function Dashboard() {
                             size: 45mm 20mm; 
                             margin: 0 !important; 
                         }
+                        @media print {
+                            body, html {
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                height: 20mm !important;
+                                width: 45mm !important;
+                                overflow: hidden !important;
+                            }
+                        }
                         body { 
                             width: 45mm; 
                             height: 20mm; 
@@ -472,6 +491,7 @@ export default function Dashboard() {
                     </div>
                     <script>
                         window.onload = () => {
+                            document.title = "";
                             setTimeout(() => {
                                 window.print();
                                 window.close();
