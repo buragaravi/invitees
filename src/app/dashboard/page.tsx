@@ -335,11 +335,11 @@ export default function Dashboard() {
                 }
             });
 
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                showToast('Popup Blocked', 'Please allow popups to print labels.', 'error');
-                return;
-            }
+            const printIframe = document.createElement('iframe');
+            printIframe.style.position = 'absolute';
+            printIframe.style.top = '-9999px';
+            printIframe.style.left = '-9999px';
+            document.body.appendChild(printIframe);
 
             const labelHtml = `
             <html>
@@ -357,6 +357,10 @@ export default function Dashboard() {
                                 width: 45mm !important;
                                 overflow: hidden !important;
                             }
+                            * {
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                            }
                         }
                         body { 
                             width: 45mm; 
@@ -365,25 +369,23 @@ export default function Dashboard() {
                             padding: 0; 
                             background: white;
                             overflow: hidden;
+                            display: flex;
+                            align-items: flex-start;
+                            justify-content: flex-start;
                         }
                         .qr-container {
-                            position: fixed;
-                            top: 0;
-                            left: 0;
                             width: 45mm;
                             height: 20mm;
                             margin: 0;
                             padding: 0;
                             display: flex;
-                            align-items: flex-start;
-                            justify-content: flex-start;
+                            align-items: center;
+                            justify-content: center;
                             box-sizing: border-box;
                         }
                         .qr-img { 
                             width: 18mm;
                             height: 18mm;
-                            margin-top: 4mm;
-                            margin-left: 0;
                             object-fit: contain;
                             display: block;
                             image-rendering: pixelated;
@@ -394,21 +396,22 @@ export default function Dashboard() {
                     <div class="qr-container">
                         <img src="${qrDataUrl}" class="qr-img" />
                     </div>
-                    <script>
-                        window.onload = () => {
-                            document.title = "";
-                            setTimeout(() => {
-                                window.print();
-                                window.close();
-                            }, 500);
-                        };
-                    </script>
                 </body>
             </html>
         `;
 
-            printWindow.document.write(labelHtml);
-            printWindow.document.close();
+            const iframeDoc = printIframe.contentWindow?.document;
+            if (iframeDoc) {
+                iframeDoc.open();
+                iframeDoc.write(labelHtml);
+                iframeDoc.close();
+
+                setTimeout(() => {
+                    printIframe.contentWindow?.focus();
+                    printIframe.contentWindow?.print();
+                    document.body.removeChild(printIframe);
+                }, 500);
+            }
         } catch (err) {
             console.error("QR generation for print failed", err);
             showToast('Print Error', 'Could not generate QR code.', 'error');
@@ -430,11 +433,11 @@ export default function Dashboard() {
             });
             const barcodeDataUrl = canvas.toDataURL("image/png");
 
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                showToast('Popup Blocked', 'Please allow popups to print labels.', 'error');
-                return;
-            }
+            const printIframe = document.createElement('iframe');
+            printIframe.style.position = 'absolute';
+            printIframe.style.top = '-9999px';
+            printIframe.style.left = '-9999px';
+            document.body.appendChild(printIframe);
 
             const labelHtml = `
             <html>
@@ -452,6 +455,10 @@ export default function Dashboard() {
                                 width: 45mm !important;
                                 overflow: hidden !important;
                             }
+                            * {
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                            }
                         }
                         body { 
                             width: 45mm; 
@@ -462,23 +469,18 @@ export default function Dashboard() {
                             overflow: hidden;
                         }
                         .barcode-container {
-                            position: fixed;
-                            top: 0;
-                            left: 0;
                             width: 45mm;
                             height: 20mm;
                             margin: 0;
                             padding: 0;
                             display: flex;
-                            align-items: flex-start;
-                            justify-content: flex-start;
+                            align-items: center;
+                            justify-content: center;
                             box-sizing: border-box;
                         }
                         .barcode-img { 
                             width: 38mm;
                             height: 18mm;
-                            margin-top: 2mm;
-                            margin-left: 0;
                             object-fit: contain;
                             display: block;
                             image-rendering: pixelated;
@@ -489,21 +491,22 @@ export default function Dashboard() {
                     <div class="barcode-container">
                         <img src="${barcodeDataUrl}" class="barcode-img" />
                     </div>
-                    <script>
-                        window.onload = () => {
-                            document.title = "";
-                            setTimeout(() => {
-                                window.print();
-                                window.close();
-                            }, 500);
-                        };
-                    </script>
                 </body>
             </html>
         `;
 
-            printWindow.document.write(labelHtml);
-            printWindow.document.close();
+            const iframeDoc = printIframe.contentWindow?.document;
+            if (iframeDoc) {
+                iframeDoc.open();
+                iframeDoc.write(labelHtml);
+                iframeDoc.close();
+
+                setTimeout(() => {
+                    printIframe.contentWindow?.focus();
+                    printIframe.contentWindow?.print();
+                    document.body.removeChild(printIframe);
+                }, 500);
+            }
         } catch (err) {
             console.error("Barcode generation for print failed", err);
             showToast('Print Error', 'Could not generate barcode. Please try again.', 'error');
