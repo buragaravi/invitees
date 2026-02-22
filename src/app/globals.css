@@ -21,3 +21,10 @@ body {
 ::-webkit-scrollbar-thumb {
   @apply bg-slate-300 dark:bg-slate-800 rounded-full hover:bg-indigo-500 transition-colors;
 }
+
+/* Global Print styles for suppression of headers/footers */
+@media print {
+  @page {
+    margin: 0 !important;
+  }
+}

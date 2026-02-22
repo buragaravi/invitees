@@ -342,52 +342,43 @@ export default function Dashboard() {
             document.body.appendChild(printIframe);
 
             const labelHtml = `
+            <!DOCTYPE html>
             <html>
                 <head>
+                    <title> </title>
                     <style>
                         @page { 
                             size: 45mm 20mm; 
-                            margin: 0 !important; 
+                            margin: 0; 
+                        }
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+                        html, body {
+                            width: 45mm;
+                            height: 20mm;
+                            overflow: hidden;
+                            background: white;
                         }
                         @media print {
-                            body, html {
-                                margin: 0 !important;
-                                padding: 0 !important;
-                                height: 20mm !important;
-                                width: 45mm !important;
-                                overflow: hidden !important;
-                            }
-                            * {
+                            body {
                                 -webkit-print-color-adjust: exact !important;
                                 print-color-adjust: exact !important;
                             }
                         }
-                        body { 
-                            width: 45mm; 
-                            height: 20mm; 
-                            margin: 0; 
-                            padding: 0; 
-                            background: white;
-                            overflow: hidden;
-                            display: flex;
-                            align-items: flex-start;
-                            justify-content: flex-start;
-                        }
                         .qr-container {
                             width: 45mm;
                             height: 20mm;
-                            margin: 0;
-                            padding: 0;
                             display: flex;
                             align-items: center;
                             justify-content: center;
-                            box-sizing: border-box;
                         }
                         .qr-img { 
                             width: 18mm;
                             height: 18mm;
                             object-fit: contain;
-                            display: block;
                             image-rendering: pixelated;
                         }
                     </style>
@@ -406,11 +397,22 @@ export default function Dashboard() {
                 iframeDoc.write(labelHtml);
                 iframeDoc.close();
 
-                setTimeout(() => {
-                    printIframe.contentWindow?.focus();
-                    printIframe.contentWindow?.print();
-                    document.body.removeChild(printIframe);
-                }, 500);
+                const img = iframeDoc.querySelector('img');
+                if (img) {
+                    img.onload = () => {
+                        setTimeout(() => {
+                            printIframe.contentWindow?.focus();
+                            printIframe.contentWindow?.print();
+                            document.body.removeChild(printIframe);
+                        }, 200);
+                    };
+                } else {
+                    setTimeout(() => {
+                        printIframe.contentWindow?.focus();
+                        printIframe.contentWindow?.print();
+                        document.body.removeChild(printIframe);
+                    }, 500);
+                }
             }
         } catch (err) {
             console.error("QR generation for print failed", err);
@@ -440,49 +442,43 @@ export default function Dashboard() {
             document.body.appendChild(printIframe);
 
             const labelHtml = `
+            <!DOCTYPE html>
             <html>
                 <head>
+                    <title> </title>
                     <style>
                         @page { 
                             size: 45mm 20mm; 
-                            margin: 0 !important; 
+                            margin: 0; 
+                        }
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+                        html, body {
+                            width: 45mm;
+                            height: 20mm;
+                            overflow: hidden;
+                            background: white;
                         }
                         @media print {
-                            body, html {
-                                margin: 0 !important;
-                                padding: 0 !important;
-                                height: 20mm !important;
-                                width: 45mm !important;
-                                overflow: hidden !important;
-                            }
-                            * {
+                            body {
                                 -webkit-print-color-adjust: exact !important;
                                 print-color-adjust: exact !important;
                             }
                         }
-                        body { 
-                            width: 45mm; 
-                            height: 20mm; 
-                            margin: 0; 
-                            padding: 0; 
-                            background: white;
-                            overflow: hidden;
-                        }
                         .barcode-container {
                             width: 45mm;
                             height: 20mm;
-                            margin: 0;
-                            padding: 0;
                             display: flex;
                             align-items: center;
                             justify-content: center;
-                            box-sizing: border-box;
                         }
                         .barcode-img { 
                             width: 38mm;
                             height: 18mm;
                             object-fit: contain;
-                            display: block;
                             image-rendering: pixelated;
                         }
                     </style>
@@ -501,11 +497,22 @@ export default function Dashboard() {
                 iframeDoc.write(labelHtml);
                 iframeDoc.close();
 
-                setTimeout(() => {
-                    printIframe.contentWindow?.focus();
-                    printIframe.contentWindow?.print();
-                    document.body.removeChild(printIframe);
-                }, 500);
+                const img = iframeDoc.querySelector('img');
+                if (img) {
+                    img.onload = () => {
+                        setTimeout(() => {
+                            printIframe.contentWindow?.focus();
+                            printIframe.contentWindow?.print();
+                            document.body.removeChild(printIframe);
+                        }, 200);
+                    };
+                } else {
+                    setTimeout(() => {
+                        printIframe.contentWindow?.focus();
+                        printIframe.contentWindow?.print();
+                        document.body.removeChild(printIframe);
+                    }, 500);
+                }
             }
         } catch (err) {
             console.error("Barcode generation for print failed", err);
