@@ -344,11 +344,10 @@ export default function Dashboard() {
             const labelHtml = `
             <html>
                 <head>
-                    <title>Label - ${previewingLabel.name}</title>
                     <style>
                         @page { 
                             size: 45mm 20mm; 
-                            margin: 0; 
+                            margin: 0 !important; 
                         }
                         body { 
                             width: 45mm; 
@@ -430,11 +429,10 @@ export default function Dashboard() {
             const labelHtml = `
             <html>
                 <head>
-                    <title>Label - ${previewingLabel.name}</title>
                     <style>
                         @page { 
                             size: 45mm 20mm; 
-                            margin: 0; 
+                            margin: 0 !important; 
                         }
                         body { 
                             width: 45mm; 
